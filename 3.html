@@ -1,0 +1,933 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>主包的神秘入口</title>
+  <style>
+    :root{
+      --bg1:#0b1020;
+      --bg2:#141a33;
+      --card:#10162b;
+      --card2:#0f1a3a;
+      --text:#eaf0ff;
+      --muted:#aab6ff;
+      --accent:#7c5cff;
+      --accent2:#00d4ff;
+      --ok:#22c55e;
+      --bad:#ef4444;
+      --warn:#f59e0b;
+      --shadow: 0 18px 55px rgba(0,0,0,.45);
+      --radius: 18px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, "PingFang SC","Microsoft YaHei", Arial, sans-serif;
+      color:var(--text);
+      background:
+        radial-gradient(1200px 600px at 20% 10%, rgba(124,92,255,.35), transparent 50%),
+        radial-gradient(900px 500px at 80% 20%, rgba(0,212,255,.25), transparent 55%),
+        radial-gradient(800px 600px at 40% 90%, rgba(34,197,94,.18), transparent 55%),
+        linear-gradient(180deg, var(--bg1), var(--bg2));
+      overflow-x:hidden;
+    }
+    .wrap{max-width:980px;margin:0 auto;padding:26px 18px 60px}
+    .topbar{
+      display:flex;align-items:center;justify-content:space-between;gap:12px;
+      margin-bottom:18px;
+    }
+    .brand{
+      display:flex;align-items:center;gap:10px;
+      user-select:none;
+    }
+    .logo{
+      width:42px;height:42px;border-radius:14px;
+      background: conic-gradient(from 210deg, var(--accent), var(--accent2), var(--ok), var(--accent));
+      box-shadow: 0 8px 30px rgba(124,92,255,.35);
+      position:relative;
+    }
+    .logo:after{
+      content:"★";
+      position:absolute;inset:0;
+      display:grid;place-items:center;
+      color:#0b1020;
+      font-weight:900;
+      text-shadow: 0 0 0 rgba(0,0,0,0);
+    }
+    .title{
+      line-height:1.1;
+    }
+    .title h1{margin:0;font-size:18px;letter-spacing:.6px}
+    .title p{margin:4px 0 0;color:var(--muted);font-size:12px}
+    .pill{
+      display:inline-flex;align-items:center;gap:8px;
+      background:rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.1);
+      padding:10px 12px;border-radius:999px;
+      box-shadow: 0 8px 26px rgba(0,0,0,.25);
+      color:var(--muted);
+      font-size:12px;
+    }
+    .pill b{color:var(--text)}
+    .grid{
+      display:grid;
+      grid-template-columns: 1.05fr .95fr;
+      gap:16px;
+      align-items:start;
+    }
+    @media (max-width:900px){
+      .grid{grid-template-columns:1fr}
+    }
+
+    .card{
+      background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.03));
+      border:1px solid rgba(255,255,255,.10);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding:18px;
+      position:relative;
+      overflow:hidden;
+    }
+    .card:before{
+      content:"";
+      position:absolute;inset:-60px;
+      background: radial-gradient(300px 160px at 10% 10%, rgba(124,92,255,.22), transparent 60%),
+                  radial-gradient(280px 150px at 90% 30%, rgba(0,212,255,.16), transparent 60%);
+      pointer-events:none;
+    }
+    .card > *{position:relative}
+    .h2{margin:0 0 8px;font-size:18px}
+    .sub{margin:0 0 14px;color:var(--muted);font-size:13px;line-height:1.6}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    .input{
+      flex:1;
+      min-width:220px;
+      background:rgba(10,14,28,.75);
+      border:1px solid rgba(255,255,255,.12);
+      color:var(--text);
+      padding:12px 12px;
+      border-radius:14px;
+      outline:none;
+      font-size:14px;
+    }
+    .btn{
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      border:none;color:#051022;
+      padding:12px 14px;border-radius:14px;
+      font-weight:800;
+      cursor:pointer;
+      box-shadow: 0 10px 26px rgba(0,212,255,.22);
+      transition: transform .08s ease;
+      user-select:none;
+    }
+    .btn:active{transform: translateY(1px) scale(.99)}
+    .btn.ghost{
+      background:rgba(255,255,255,.06);
+      color:var(--text);
+      border:1px solid rgba(255,255,255,.12);
+      box-shadow:none;
+      font-weight:700;
+    }
+    .hint{
+      display:flex;gap:10px;align-items:flex-start;
+      padding:12px 12px;border-radius:14px;
+      background:rgba(124,92,255,.10);
+      border:1px dashed rgba(124,92,255,.35);
+      color:var(--muted);
+      font-size:13px;
+      line-height:1.55;
+    }
+    .hint .tag{
+      flex:0 0 auto;
+      font-weight:900;
+      color:var(--text);
+      background:rgba(124,92,255,.25);
+      border:1px solid rgba(124,92,255,.35);
+      padding:2px 8px;border-radius:999px;
+      margin-top:1px;
+    }
+    .msg{
+      margin-top:10px;
+      font-size:13px;
+      color:var(--muted);
+      min-height:20px;
+    }
+    .msg.ok{color:rgba(34,197,94,.95)}
+    .msg.bad{color:rgba(239,68,68,.95)}
+    .msg.warn{color:rgba(245,158,11,.95)}
+
+    .side{
+      display:flex;
+      flex-direction:column;
+      gap:16px;
+    }
+    .mini{
+      background:rgba(10,14,28,.55);
+      border:1px solid rgba(255,255,255,.10);
+      border-radius: var(--radius);
+      padding:14px;
+    }
+    .mini h3{margin:0 0 6px;font-size:14px}
+    .mini p{margin:0;color:var(--muted);font-size:13px;line-height:1.6}
+    .kpi{
+      display:grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap:10px;margin-top:10px
+    }
+    .kpi .box{
+      background:rgba(255,255,255,.05);
+      border:1px solid rgba(255,255,255,.10);
+      border-radius:14px;
+      padding:10px;
+      text-align:center;
+    }
+    .kpi .n{font-size:18px;font-weight:900}
+    .kpi .l{font-size:12px;color:var(--muted);margin-top:2px}
+
+    /* Main game */
+    .hidden{display:none !important}
+    .gameTop{
+      display:flex;gap:12px;flex-wrap:wrap;align-items:center;justify-content:space-between;
+      margin-bottom:12px;
+    }
+    .progress{
+      flex:1;min-width:220px;
+      height:12px;border-radius:999px;
+      background:rgba(255,255,255,.08);
+      border:1px solid rgba(255,255,255,.10);
+      overflow:hidden;
+    }
+    .bar{
+      height:100%;
+      width:0%;
+      background: linear-gradient(90deg, var(--ok), var(--accent2), var(--accent));
+      border-radius:999px;
+      transition: width .35s ease;
+    }
+    .step{
+      display:inline-flex;gap:8px;align-items:center;
+      color:var(--muted);font-size:12px;
+      background:rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.10);
+      padding:8px 10px;border-radius:999px;
+      user-select:none;
+    }
+    .panel{
+      background:rgba(10,14,28,.55);
+      border:1px solid rgba(255,255,255,.10);
+      border-radius:var(--radius);
+      padding:16px;
+    }
+    .panel h3{margin:0 0 8px;font-size:16px}
+    .panel p{margin:0 0 14px;color:var(--muted);font-size:13px;line-height:1.7}
+
+    /* Quiz */
+    .choices{display:grid;gap:10px}
+    .choice{
+      padding:12px 12px;border-radius:14px;
+      border:1px solid rgba(255,255,255,.12);
+      background:rgba(255,255,255,.05);
+      cursor:pointer;
+      transition: transform .08s ease, border-color .2s ease;
+      user-select:none;
+    }
+    .choice:hover{transform: translateY(-1px); border-color: rgba(0,212,255,.35)}
+    .choice.correct{
+      border-color: rgba(34,197,94,.65);
+      background: rgba(34,197,94,.12);
+    }
+    .choice.wrong{
+      border-color: rgba(239,68,68,.65);
+      background: rgba(239,68,68,.10);
+    }
+
+    /* Drag match */
+    .matchGrid{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:12px;
+      align-items:start;
+    }
+    @media (max-width:720px){.matchGrid{grid-template-columns:1fr}}
+    .chips{
+      display:flex;flex-wrap:wrap;gap:10px;
+      min-height:54px;
+    }
+    .chip{
+      padding:10px 12px;border-radius:999px;
+      background:rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.12);
+      cursor:grab;
+      user-select:none;
+      font-weight:700;
+    }
+    .chip:active{cursor:grabbing}
+    .bins{display:grid;gap:10px}
+    .bin{
+      padding:12px;border-radius:14px;
+      border:1px dashed rgba(255,255,255,.25);
+      background:rgba(255,255,255,.04);
+      min-height:52px;
+    }
+    .bin strong{display:block;margin-bottom:6px}
+    .bin .drop{
+      display:flex;flex-wrap:wrap;gap:8px;
+      min-height:24px;
+    }
+    .bin.good{border-color: rgba(34,197,94,.55); background: rgba(34,197,94,.08)}
+    .bin.bad{border-color: rgba(239,68,68,.55); background: rgba(239,68,68,.08)}
+
+    /* Memory */
+    .board{
+      display:grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap:10px;
+    }
+    @media (max-width:720px){.board{grid-template-columns: repeat(3,1fr)}}
+    .tile{
+      aspect-ratio: 1 / 1;
+      border-radius:16px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.05);
+      display:grid;place-items:center;
+      cursor:pointer;
+      font-size:28px;
+      user-select:none;
+      position:relative;
+      overflow:hidden;
+    }
+    .tile.revealed{
+      background: rgba(0,212,255,.12);
+      border-color: rgba(0,212,255,.35);
+    }
+    .tile.matched{
+      background: rgba(34,197,94,.12);
+      border-color: rgba(34,197,94,.45);
+      cursor:default;
+    }
+    .footerRow{
+      display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between;
+      margin-top:14px;
+    }
+    .badge{
+      font-size:12px;color:var(--muted);
+      background:rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.10);
+      padding:8px 10px;border-radius:999px;
+    }
+    .copybox{
+      width:100%;
+      padding:12px;border-radius:14px;
+      background:rgba(10,14,28,.75);
+      border:1px solid rgba(255,255,255,.12);
+      color:var(--text);
+      font-size:13px;line-height:1.6;
+      white-space:pre-wrap;
+    }
+
+    /* Confetti */
+    .confetti{
+      position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:9999;
+    }
+    .confetti i{
+      position:absolute;
+      width:10px;height:16px;border-radius:3px;
+      opacity:.95;
+      animation: fall linear forwards;
+      transform: translate3d(0,-20px,0) rotate(0deg);
+      filter: drop-shadow(0 8px 10px rgba(0,0,0,.18));
+    }
+    @keyframes fall{
+      to{
+        transform: translate3d(var(--dx), 110vh, 0) rotate(720deg);
+        opacity:1;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <div class="brand">
+        <div class="logo"></div>
+        <div class="title">
+          <h1>主包的神秘入口</h1>
+          <p>输入正确口令才能进来 · 进来后 5 分钟左右玩完一个轻量小流程</p>
+        </div>
+      </div>
+      <div class="pill" id="statusPill">状态：<b>未验证</b> 🔒</div>
+    </div>
+
+    <!-- Gate -->
+    <div class="grid" id="gate">
+      <div class="card">
+        <h2 class="h2">🚪 先过门禁：请输入密码</h2>
+        <p class="sub">
+          规则很简单：输入对了就放行；输入错了会给你一点点“更接近”的提示。
+        </p>
+
+        <div class="hint" style="margin-bottom:12px">
+          <span class="tag">提示</span>
+          <div>
+            密码提示是：<b>主包的名字</b>（三个字）。<br/>
+            你也可以把它理解成：<b>“主包本人身份证明”</b> 😄
+          </div>
+        </div>
+
+        <div class="row">
+          <input class="input" id="pwd" placeholder="请输入 3 个字的口令（例如：xxx）" maxlength="12" />
+          <button class="btn" id="enterBtn">验证并进入</button>
+          <button class="btn ghost" id="demoBtn" title="演示按钮：自动填入正确密码">一键演示</button>
+        </div>
+        <div class="msg" id="gateMsg"></div>
+
+        <div class="mini" style="margin-top:14px">
+          <h3>🧠 小贴士</h3>
+          <p>输入时请注意：中文全角/半角不影响，但会自动忽略前后空格。</p>
+        </div>
+      </div>
+
+      <div class="side">
+        <div class="mini">
+          <h3>🎮 进去以后玩什么？</h3>
+          <p>一个“主包认证闯关”小流程：<b>3关 + 彩蛋</b>。每关都不难，主要图个开心。</p>
+          <div class="kpi">
+            <div class="box"><div class="n">3</div><div class="l">关卡</div></div>
+            <div class="box"><div class="n">5</div><div class="l">分钟左右</div></div>
+            <div class="box"><div class="n">0</div><div class="l">学习成本</div></div>
+          </div>
+        </div>
+        <div class="mini">
+          <h3>🧩 温馨提示</h3>
+          <p>如果你希望更“内部梗”，把第1关题目/第2关词条换成你们团队的梗就更好玩。</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Game -->
+    <div class="card hidden" id="game">
+      <div class="gameTop">
+        <div class="progress" aria-label="progress">
+          <div class="bar" id="bar"></div>
+        </div>
+        <div class="step" id="stepText">第 1/3 关：暖身小问答</div>
+      </div>
+
+      <!-- Panel 1: Quiz -->
+      <div class="panel" id="panel1">
+        <h3>第 1 关：暖身小问答（选对就过）</h3>
+        <p>
+          主包认证第一步：确认你是“认真看题的人”。只有一题，轻松一下：
+          <br/>下面哪个选项最像“进入一个有趣网页的正确姿势”？ 
+        </p>
+        <div class="choices" id="choices">
+          <div class="choice" data-correct="0">A. 盲猜 100 次，然后怪键盘</div>
+          <div class="choice" data-correct="1">B. 看提示、动脑子、快乐通关</div>
+          <div class="choice" data-correct="0">C. 把鼠标举过头顶转三圈再点</div>
+          <div class="choice" data-correct="0">D. 一边跑步一边输入密码提高成功率</div>
+        </div>
+        <div class="msg" id="msg1"></div>
+        <div class="footerRow">
+          <span class="badge">提示：本网页的隐藏技能是——你越轻松越容易通关 😎</span>
+          <button class="btn hidden" id="to2">进入第 2 关</button>
+        </div>
+      </div>
+
+      <!-- Panel 2: Drag match -->
+      <div class="panel hidden" id="panel2">
+        <h3>第 2 关：拖拽配对（把词条放进正确盒子）</h3>
+        <p>
+          把下方词条拖到你认为正确的盒子里。只要全对就过关。
+          <br/>（放心：一共 6 个词条，2 个盒子，很快！）
+        </p>
+
+        <div class="matchGrid">
+          <div>
+            <div class="badge" style="margin-bottom:10px">可拖拽词条：</div>
+            <div class="chips" id="chips"></div>
+          </div>
+          <div class="bins">
+            <div class="bin" data-bin="fun">
+              <strong>✅ “有趣网页”应有的特征</strong>
+              <div class="drop" id="dropFun"></div>
+            </div>
+            <div class="bin" data-bin="meh">
+              <strong>🌀 “不太推荐”的特征</strong>
+              <div class="drop" id="dropMeh"></div>
+            </div>
+            <div class="msg" id="msg2"></div>
+            <div class="footerRow">
+              <span class="badge">提示：有趣 ≠ 复杂；有趣 = 清晰 + 互动 + 反馈 ✨</span>
+              <button class="btn hidden" id="to3">进入第 3 关</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Panel 3: Memory -->
+      <div class="panel hidden" id="panel3">
+        <h3>第 3 关：翻牌记忆（找出所有配对）</h3>
+        <p>
+          这是最后一关：翻开两张相同表情就算配对成功。配对完成即可通关！
+        </p>
+        <div class="board" id="board"></div>
+        <div class="footerRow">
+          <span class="badge" id="moves">步数：0</span>
+          <span class="badge" id="pairs">配对：0/6</span>
+          <button class="btn ghost" id="resetMem">重置这一关</button>
+        </div>
+        <div class="msg" id="msg3"></div>
+        <div class="footerRow" style="margin-top:10px">
+          <span class="badge">小技巧：先把“你看到的”当成线索，而不是负担。</span>
+          <button class="btn hidden" id="finishBtn">通关！领取主包认证</button>
+        </div>
+      </div>
+
+      <!-- Finish -->
+      <div class="panel hidden" id="panel4">
+        <h3>🎉 通关啦：主包认证证书已生成</h3>
+        <p>
+          恭喜你完成了 3 关。你已经具备“看提示、会互动、能通关”的宝贵品质。
+          <br/>下面这段话可以复制发给朋友/群里当彩蛋（当然也可以自己偷偷开心一下）。
+        </p>
+        <div class="copybox" id="cert"></div>
+        <div class="footerRow">
+          <button class="btn" id="copyBtn">一键复制</button>
+          <button class="btn ghost" id="replayBtn">再玩一遍</button>
+        </div>
+        <div class="msg" id="msg4"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="confetti hidden" id="confetti"></div>
+
+  <script>
+    // ====== Gate ======
+    const REAL_PASSWORD = "耿淑珍";
+    const gate = document.getElementById("gate");
+    const game = document.getElementById("game");
+    const pwd = document.getElementById("pwd");
+    const enterBtn = document.getElementById("enterBtn");
+    const demoBtn = document.getElementById("demoBtn");
+    const gateMsg = document.getElementById("gateMsg");
+    const statusPill = document.getElementById("statusPill");
+
+    let attempts = 0;
+
+    function normalize(s){
+      return (s || "").trim().replace(/\s+/g,"");
+    }
+
+    function gateFeedback(input){
+      // 轻量提示：长度、是否包含某些字
+      const target = REAL_PASSWORD;
+      const n = normalize(input);
+      if(!n) return {type:"warn", text:"先输入点什么吧～（提示：主包的名字，三个字）"};
+      if(n === target) return {type:"ok", text:"验证通过！欢迎进入主包的神秘世界 🗝️"};
+      const hints = [];
+      if(n.length !== 3) hints.push("长度不太对：提示说是“三个字”");
+      // 简单“接近度”提示（不泄露完整密码）
+      let hit = 0;
+      for(const ch of n){
+        if(target.includes(ch)) hit++;
+      }
+      if(hit === 0) hints.push("你输入的字和正确口令重合度：0（换个思路）");
+      if(hit === 1) hints.push("有 1 个字“靠近真相”了（不错！）");
+      if(hit >= 2) hints.push("已经有 2 个字“非常接近”了（就差一点点）");
+      if(attempts >= 3) hints.push("额外提示：这是一个标准的中文姓名格式");
+      return {type:"bad", text: "没通过 😅 " + hints.join("；")};
+    }
+
+    function enter(){
+      attempts++;
+      const v = normalize(pwd.value);
+      const fb = gateFeedback(v);
+      gateMsg.className = "msg " + fb.type;
+      gateMsg.textContent = fb.text;
+
+      if(v === REAL_PASSWORD){
+        statusPill.innerHTML = '状态：<b>已验证</b> 🔓';
+        gate.classList.add("hidden");
+        game.classList.remove("hidden");
+        startGame();
+      }
+    }
+
+    enterBtn.addEventListener("click", enter);
+    pwd.addEventListener("keydown", (e)=>{ if(e.key==="Enter") enter(); });
+    demoBtn.addEventListener("click", ()=>{
+      pwd.value = REAL_PASSWORD;
+      pwd.focus();
+      gateMsg.className="msg";
+      gateMsg.textContent="（已自动填入正确密码，点击“验证并进入”即可）";
+    });
+
+    // ====== Game Flow ======
+    const bar = document.getElementById("bar");
+    const stepText = document.getElementById("stepText");
+
+    const panel1 = document.getElementById("panel1");
+    const panel2 = document.getElementById("panel2");
+    const panel3 = document.getElementById("panel3");
+    const panel4 = document.getElementById("panel4");
+
+    const to2 = document.getElementById("to2");
+    const to3 = document.getElementById("to3");
+    const finishBtn = document.getElementById("finishBtn");
+
+    function setStep(step){
+      // step: 1..4
+      const pct = step===1? 0 : step===2? 33 : step===3? 66 : 100;
+      bar.style.width = pct + "%";
+      if(step===1) stepText.textContent = "第 1/3 关：暖身小问答";
+      if(step===2) stepText.textContent = "第 2/3 关：拖拽配对";
+      if(step===3) stepText.textContent = "第 3/3 关：翻牌记忆";
+      if(step===4) stepText.textContent = "🎉 通关：主包认证已发放";
+    }
+
+    function showPanel(p){
+      [panel1,panel2,panel3,panel4].forEach(x=>x.classList.add("hidden"));
+      p.classList.remove("hidden");
+    }
+
+    function startGame(){
+      setStep(1);
+      showPanel(panel1);
+      initQuiz();
+      initMatch();
+      initMemory();
+    }
+
+    // ====== Panel 1: Quiz ======
+    const msg1 = document.getElementById("msg1");
+    const choices = document.querySelectorAll(".choice");
+
+    function initQuiz(){
+      msg1.className="msg";
+      msg1.textContent="点击你认为正确的选项～";
+      to2.classList.add("hidden");
+      choices.forEach(c=>{
+        c.classList.remove("correct","wrong");
+        c.onclick = ()=>{
+          const ok = c.dataset.correct === "1";
+          choices.forEach(x=>x.classList.remove("correct","wrong"));
+          if(ok){
+            c.classList.add("correct");
+            msg1.className="msg ok";
+            msg1.textContent="✅ 通过！你是会看提示的人（主包认可+1）";
+            to2.classList.remove("hidden");
+          }else{
+            c.classList.add("wrong");
+            msg1.className="msg bad";
+            msg1.textContent="❌ 这个选项太离谱啦～再选一次，别紧张。";
+          }
+        };
+      });
+
+      to2.onclick = ()=>{
+        setStep(2);
+        showPanel(panel2);
+      };
+    }
+
+    // ====== Panel 2: Drag match ======
+    const chipsEl = document.getElementById("chips");
+    const dropFun = document.getElementById("dropFun");
+    const dropMeh = document.getElementById("dropMeh");
+    const msg2 = document.getElementById("msg2");
+
+    const matchItems = [
+      {txt:"清晰的目标", bin:"fun"},
+      {txt:"即时反馈", bin:"fun"},
+      {txt:"简单易懂", bin:"fun"},
+      {txt:"看不懂也不解释", bin:"meh"},
+      {txt:"操作太复杂", bin:"meh"},
+      {txt:"没有互动", bin:"meh"},
+    ];
+
+    function shuffle(arr){
+      const a = arr.slice();
+      for(let i=a.length-1;i>0;i--){
+        const j = Math.floor(Math.random()*(i+1));
+        [a[i],a[j]]=[a[j],a[i]];
+      }
+      return a;
+    }
+
+    function initMatch(){
+      msg2.className="msg";
+      msg2.textContent="把词条拖到你认为正确的盒子里。全放对就过关～";
+      to3.classList.add("hidden");
+
+      dropFun.innerHTML = "";
+      dropMeh.innerHTML = "";
+      chipsEl.innerHTML = "";
+      document.querySelectorAll(".bin").forEach(b=>b.classList.remove("good","bad"));
+
+      const items = shuffle(matchItems);
+
+      items.forEach((it, idx)=>{
+        const chip = document.createElement("div");
+        chip.className="chip";
+        chip.textContent = it.txt;
+        chip.draggable = true;
+        chip.dataset.bin = it.bin;
+        chip.dataset.id = "c"+idx;
+        chip.addEventListener("dragstart", (e)=>{
+          e.dataTransfer.setData("text/plain", chip.dataset.id);
+          chip.style.opacity = ".6";
+        });
+        chip.addEventListener("dragend", ()=>{
+          chip.style.opacity = "1";
+        });
+        chipsEl.appendChild(chip);
+      });
+
+      function allowDrop(e){ e.preventDefault(); }
+
+      function onDropFactory(binName, dropZone){
+        return function(e){
+          e.preventDefault();
+          const id = e.dataTransfer.getData("text/plain");
+          const chip = chipsEl.querySelector(`[data-id="${id}"]`) || document.querySelector(`[data-id="${id}"]`);
+          if(!chip) return;
+
+          // append into the drop zone
+          dropZone.appendChild(chip);
+          checkMatch();
+        }
+      }
+
+      const bins = document.querySelectorAll(".bin");
+      bins.forEach(b=>{
+        b.addEventListener("dragover", allowDrop);
+        const binName = b.dataset.bin;
+        const zone = binName==="fun" ? dropFun : dropMeh;
+        b.addEventListener("drop", onDropFactory(binName, zone));
+      });
+
+      function checkMatch(){
+        const allChips = document.querySelectorAll(".chip");
+        const placed = Array.from(allChips).filter(ch => ch.parentElement !== chipsEl);
+        // require all placed
+        if(placed.length !== matchItems.length){
+          msg2.className="msg";
+          msg2.textContent = `已放入 ${placed.length}/${matchItems.length}，继续～`;
+          return;
+        }
+
+        let ok = true;
+        placed.forEach(ch=>{
+          const parentBin = ch.closest(".bin").dataset.bin;
+          if(parentBin !== ch.dataset.bin) ok = false;
+        });
+
+        if(ok){
+          msg2.className="msg ok";
+          msg2.textContent="✅ 全对！你已经掌握“有趣=清晰+互动+反馈”的奥义。";
+          document.querySelectorAll(".bin").forEach(b=>b.classList.add("good"));
+          to3.classList.remove("hidden");
+        }else{
+          msg2.className="msg bad";
+          msg2.textContent="❌ 有些词条放错啦～调整一下再试。";
+          // 标记一下盒子状态
+          document.querySelectorAll(".bin").forEach(b=>b.classList.remove("good","bad"));
+          document.querySelectorAll(".bin").forEach(b=>b.classList.add("bad"));
+        }
+      }
+
+      to3.onclick = ()=>{
+        setStep(3);
+        showPanel(panel3);
+      };
+    }
+
+    // ====== Panel 3: Memory ======
+    const board = document.getElementById("board");
+    const movesEl = document.getElementById("moves");
+    const pairsEl = document.getElementById("pairs");
+    const msg3 = document.getElementById("msg3");
+    const resetMem = document.getElementById("resetMem");
+
+    const symbolsBase = ["🍙","🧋","🎧","🧩","🚀","✨"]; // 6 pairs
+
+    let tiles = [];
+    let revealed = [];
+    let moves = 0;
+    let pairs = 0;
+    let lock = false;
+
+    function buildMemory(){
+      const symbols = shuffle(symbolsBase.concat(symbolsBase));
+      tiles = symbols.map((sym, i)=>({
+        id:i,
+        sym,
+        revealed:false,
+        matched:false
+      }));
+      revealed = [];
+      moves = 0;
+      pairs = 0;
+      lock = false;
+
+      movesEl.textContent = "步数：0";
+      pairsEl.textContent = "配对：0/6";
+      msg3.className="msg";
+      msg3.textContent = "开始吧：翻开两张相同的就配对成功～";
+      finishBtn.classList.add("hidden");
+
+      board.innerHTML = "";
+      tiles.forEach(t=>{
+        const el = document.createElement("div");
+        el.className="tile";
+        el.dataset.id = t.id;
+        el.textContent = "❓";
+        el.addEventListener("click", ()=>onTileClick(t.id));
+        board.appendChild(el);
+      });
+    }
+
+    function renderTile(id){
+      const t = tiles[id];
+      const el = board.querySelector(`.tile[data-id="${id}"]`);
+      if(!el) return;
+      el.classList.toggle("revealed", t.revealed && !t.matched);
+      el.classList.toggle("matched", t.matched);
+      el.textContent = (t.revealed || t.matched) ? t.sym : "❓";
+    }
+
+    function onTileClick(id){
+      const t = tiles[id];
+      if(lock || t.matched || t.revealed) return;
+
+      t.revealed = true;
+      renderTile(id);
+      revealed.push(id);
+
+      if(revealed.length === 2){
+        moves++;
+        movesEl.textContent = "步数：" + moves;
+        const [a,b] = revealed.map(x=>tiles[x]);
+        lock = true;
+
+        if(a.sym === b.sym){
+          setTimeout(()=>{
+            a.matched = true;
+            b.matched = true;
+            renderTile(a.id); renderTile(b.id);
+            pairs++;
+            pairsEl.textContent = `配对：${pairs}/6`;
+            msg3.className="msg ok";
+            msg3.textContent="✅ 配对成功！继续～";
+            revealed = [];
+            lock = false;
+
+            if(pairs === 6){
+              msg3.className="msg ok";
+              msg3.textContent="🎉 全部配对完成！你已经是主包认证玩家了！";
+              finishBtn.classList.remove("hidden");
+            }
+          }, 380);
+        }else{
+          setTimeout(()=>{
+            a.revealed = false;
+            b.revealed = false;
+            renderTile(a.id); renderTile(b.id);
+            msg3.className="msg";
+            msg3.textContent="没配上也没关系：记住位置就行～";
+            revealed = [];
+            lock = false;
+          }, 650);
+        }
+      }
+    }
+
+    function initMemory(){
+      buildMemory();
+      resetMem.onclick = buildMemory;
+
+      finishBtn.onclick = ()=>{
+        setStep(4);
+        showPanel(panel4);
+        popConfetti();
+        makeCert();
+      };
+    }
+
+    // ====== Finish: Certificate ======
+    const cert = document.getElementById("cert");
+    const copyBtn = document.getElementById("copyBtn");
+    const replayBtn = document.getElementById("replayBtn");
+    const msg4 = document.getElementById("msg4");
+
+    function makeCert(){
+      const now = new Date();
+      const pad = n => String(n).padStart(2,"0");
+      const ts = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+
+      const text =
+`【主包认证证书】✅
+认证人：你（超级机智版）
+认证项目：5分钟轻量闯关 · 主包认证流程
+通关成绩：第1关（已过）/ 第2关（已过）/ 第3关（已过）
+特别说明：你具备“看提示、会互动、能通关”的稀有品质。
+
+主包口令彩蛋：耿淑珍（别问，问就是主包本人）
+签发时间：${ts}
+
+祝福语：愿你每次输入密码，都像这次一样——一次就对，快乐通关 ✨`;
+
+      cert.textContent = text;
+      msg4.className="msg";
+      msg4.textContent="提示：复制后发出去，节目效果会很好 😄";
+    }
+
+    copyBtn.onclick = async ()=>{
+      try{
+        await navigator.clipboard.writeText(cert.textContent);
+        msg4.className="msg ok";
+        msg4.textContent="已复制到剪贴板 ✅ 快去制造快乐！";
+      }catch(e){
+        msg4.className="msg warn";
+        msg4.textContent="复制失败（可能浏览器不允许）。你可以手动全选复制。";
+      }
+    };
+
+    replayBtn.onclick = ()=>{
+      // reset all
+      setStep(1);
+      showPanel(panel1);
+      initQuiz();
+      initMatch();
+      buildMemory();
+    };
+
+    // ====== Confetti ======
+    const confetti = document.getElementById("confetti");
+    function popConfetti(){
+      confetti.classList.remove("hidden");
+      confetti.innerHTML = "";
+      const colors = ["#7c5cff","#00d4ff","#22c55e","#f59e0b","#eaf0ff","#ef4444"];
+      const count = 80;
+      for(let i=0;i<count;i++){
+        const piece = document.createElement("i");
+        const left = Math.random()*100;
+        const delay = Math.random()*0.2;
+        const dur = 1.9 + Math.random()*1.4;
+        const dx = (Math.random()*2-1) * 18 + "vw";
+        piece.style.left = left + "vw";
+        piece.style.top = (-10 - Math.random()*20) + "vh";
+        piece.style.background = colors[Math.floor(Math.random()*colors.length)];
+        piece.style.animationDuration = dur + "s";
+        piece.style.animationDelay = delay + "s";
+        piece.style.setProperty("--dx", dx);
+        confetti.appendChild(piece);
+      }
+      setTimeout(()=>confetti.classList.add("hidden"), 2600);
+    }
+  </script>
+</body>
+</html>
